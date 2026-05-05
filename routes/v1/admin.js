@@ -21,6 +21,7 @@ router.patch("/appoint-hod/:userId", requireRole("admin"), adminController.appoi
 
 // Room management
 router.post("/create_room", requireRole("admin"), adminController.createRoom);
+router.post("/allocate_room", requireRole("admin"), adminController.AllocateRoom);
 
 router.post("/create_class",ClassController.createCourse);
 router.post("/appoint_monitor",ClassController.ClassMonitor);

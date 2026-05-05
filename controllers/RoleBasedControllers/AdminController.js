@@ -2,6 +2,7 @@
 const User  = require("../../Models/User");
 const Class = require("../../Models/class");
 const Room  = require("../../Models/Room");
+const RoomAllocation = require("../../Models/RoomAllocation");
 
 
 const toggleUserStatus = async (req, res) => {
@@ -129,7 +130,7 @@ const getAllUsers = async (req, res) => {
 
 const createRoom = async (req, res) => {
   try {
-    const { roomNo, facility } = req.body;
+    const { roomNo, facility, roomType, RoomCapacity } = req.body;
 
     if (!roomNo) {
       return res.status(400).json({ status: false, message: "roomNo is required" });
@@ -142,7 +143,19 @@ const createRoom = async (req, res) => {
         message: "facility must be 'ac' or 'non-ac'",
       });
     }
-
+      if (!roomType || !["Shared","Single"].includes(roomType)) { 
+        return res.status(400).json({
+          status: false,
+          message: "roomType must be 'Shared' or 'Single'",
+        });
+      }
+      if (!RoomCapacity || ![1, 2, 3].includes(RoomCapacity)) {
+        return res.status(400).json({
+          status: false,
+          message: "RoomCapacity must be 1, 2, or 3",
+        });
+      }
+     
     const existing = await Room.findOne({ roomNo: roomNo.trim() });
     if (existing) {
       return res.status(409).json({ status: false, message: "Room with this number already exists" });
@@ -151,6 +164,8 @@ const createRoom = async (req, res) => {
     const newRoom = await Room.create({
       roomNo: roomNo.trim(),
       facilities: [facility.toLowerCase()],
+      roomType,
+      RoomCapacity,
     });
 
     return res.status(201).json({
@@ -163,6 +178,55 @@ const createRoom = async (req, res) => {
   }
 };
 
+const AllocateRoom= async (req,res)=>{
+  const {roomId,StudentId}=req.body;
+
+  const room=await Room.findById(roomId);
+  // console.log(room);
+  
+
+  if(!room){
+    return res.status(404).json({status:false,message:"Room not found"});
+  }
+  if(room.isOccupied){
+    return res.status(400).json({status:false,message:"Room is already occupied"});
+  }
+  if(room.RoomCapacity <= room.currentOccupants){
+    return res.status(400).json({status:false,message:"Room capacity exceeded"});
+  }
+  console.log(room.RoomCapacity);
+  // Check if student exists
+  const student=User.findById(StudentId); 
+  if(!student){
+    return res.status(404).json({status:false,message:"Student not found"});
+  }
+  const existingAllocation = await RoomAllocation.findOne({ studentId: StudentId,roomId: roomId, isActive: true });
+  if (existingAllocation) {
+    return res.status(400).json({ status: false, message: "Student already has an active room allocation for this room" });
+  }
+  const allocation = await RoomAllocation.create({
+    roomId,
+    studentId: StudentId,
+    
+  });
+  await allocation.save();
+
+  // Update room status to occupied
+  
+  if( room.RoomCapacity >= room.currentOccupants){
+  room.currentOccupants += 1;
+  room.isOccupied = true;
+  }
+  await room.save();
+
+  return res.json({
+    status: true,
+    message: "Room allocated successfully",
+    data: allocation,
+  });
+}
+
+
 
 module.exports = {
   toggleUserStatus,
@@ -171,4 +235,5 @@ module.exports = {
   getAllClasses,
   getAllUsers,
   createRoom,
+  AllocateRoom
 };

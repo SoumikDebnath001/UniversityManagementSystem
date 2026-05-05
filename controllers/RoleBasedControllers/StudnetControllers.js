@@ -92,4 +92,51 @@ const getMyRoomAggregation = async (req, res) => {
   }
 };
 
+const getDetails=async(req,res)=>{
+  //student details
+//room details
+//class details
+//room partner details
+      const studentID=req.user._id;
+      const result=await User.aggregate([
+        { 
+          $match: { _id: studentID } //stage 1
+        },
+        {  
+          $lookup: {
+            from: "roomallocations",
+            localField: "_id",          //stage 2
+            foreignField: "studentId",
+            as: "allocation"
+          }
+        },
+        { $unwind: "$allocation" },   //stage 3
+        {
+          $lookup: {
+            from: "rooms",
+            localField: "allocation.roomId",
+            foreignField: "_id",
+            as: "roomDetails"
+          }
+        },
+        { $unwind: "$roomDetails" },
+        {
+          $project: {
+            roomDetails: "$roomDetails",
+            allocations: "$allocation",
+            
+          }
+        }
+      ]);
+      if(!result.length){
+        return res.status(404).json({status:false,message:"No details found"});
+      }
+      return res.json({status:true,data:result[0]});    
+
+
+}
+
+
+
+
 module.exports = { updateStudentProfile, getMyRoom, getMyRoomAggregation };

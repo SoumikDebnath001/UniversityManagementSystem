@@ -4,12 +4,10 @@ const roomAllocationSchema = new mongoose.Schema(
   {
     roomId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Room",
       required: true,
     },
     studentId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
       required: true,
     },
     isActive: {

@@ -8,10 +8,25 @@ const roomSchema = new mongoose.Schema(
       unique: true,
       trim: true,
     },
+    roomType: {
+      type: String,
+      enum: ["Shared","Single"],
+      required: true,
+    },
+    RoomCapacity: {
+      type: Number, 
+      enum: [1, 2, 3],
+      required: true,
+    },
+    currentOccupants: {
+      type: Number,
+      default: 0,
+    },
     facilities: {
       type: [String],
       default: [],
     },
+    
     isActive: {
       type: Boolean,
       default: true,
