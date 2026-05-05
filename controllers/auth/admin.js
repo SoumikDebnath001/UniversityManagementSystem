@@ -34,9 +34,54 @@ const register = async (req, res) => {
         });
     }
 }
+const login = async (req, res) => {
+  try {
+    const { email, password } = req.body;
 
+    const admin = await Admin.findOne({ email }).exec();
+
+    if (!admin) {
+      return res.status(404).json({
+        status: false,
+        message: "Admin not found",
+      });
+    }
+
+    const isMatch = passwordHash.verify(password, admin.password);
+
+    if (!isMatch) {
+      return res.status(401).json({
+        status: false,
+        message: "Invalid password",
+      });
+    }
+
+   
+    const token = createToken(req.body);
+    await Admin.updateOne(
+      { _id: admin._id },
+      { $set: { token: token } }
+    );
+
+    return res.status(200).json({
+      status: true,
+      message: "Login successful",
+      token: token,
+      data: admin,
+    });
+
+  } catch (error) {
+    console.error("Login error:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
 module.exports = {
     register,
+    login,
     getTokenData
 }
 

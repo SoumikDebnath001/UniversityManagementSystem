@@ -14,6 +14,7 @@ const getTokenData = async (token) => {
     let userData = await User.findOne({ token: token }).exec();
     return userData;
   };
+/////////////////////////////////register function
 const register = async (req, res) => {
     try {
         const { role, password , ...rest} = req.body;
@@ -53,13 +54,94 @@ const getProfile=async (req,res)=>{
   }
 
 }
+/////////////////////////////////////login function
 
+const login = async (req, res) => {
+  try {
+    const { email, password } = req.body;
 
+    const user = await User.findOne({ email }).select("+password").exec();
+
+    if (!user) {
+      return res.status(404).json({
+        status: false,
+        message: "User not found",
+      });
+    }
+
+    const isMatch = passwordHash.verify(password, user.password);
+
+    if (!isMatch) {
+      return res.status(401).json({
+        status: false,
+        message: "Invalid password",
+      });
+    }
+
+    const token = createToken(req.body);
+
+    await User.updateOne(
+      { _id: user._id },
+      { $set: { token: token } }
+    );
+
+    
+    let roleData = {};
+
+    if (user.role === "student") {
+      roleData = user.student;
+    } else if (user.role === "faculty") {
+      roleData = user.faculty;
+    } else if (user.role === "hod") {
+      roleData = user.hod;
+    } else if (user.role === "finance") {
+      roleData = user.finance;
+    } else if (user.role === "exam_controller") {
+      roleData = user.examController;
+    } else if (user.role === "hr") {
+      roleData = user.hr;
+    } else if (user.role === "librarian") {
+      roleData = user.librarian;
+    } else if (user.role === "warden") {
+      roleData = user.warden;
+    } else if (user.role === "transport_manager") {
+      roleData = user.transportManager;
+    } else if (user.role === "placement_officer") {
+      roleData = user.placementOfficer;
+    } else if (user.role === "parent") {
+      roleData = user.parent;
+    } else if (user.role === "admission_agent") {
+      roleData = user.admissionAgent;
+    }
+
+    return res.status(200).json({
+      status: true,
+      message: "Login successful",
+      token: token,
+      data: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        details: roleData,
+      },
+    });
+
+  } catch (error) {
+    console.error("Login error:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
 
 module.exports = {
     register,
     getTokenData,
-    getProfile
+    getProfile,
+    login
 }
 
 
