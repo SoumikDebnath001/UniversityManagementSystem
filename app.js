@@ -39,7 +39,13 @@ app.use('/pages', express.static(path.join(__dirname, 'buildd/static/chunks/page
 console.log("Mongo URI:", process.env.MONGO_URI);
 
 mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log("MongoDB is Connected"))
+  .then(async () => {
+    console.log("MongoDB is Connected");
+    try {
+      await mongoose.connection.collection("users").dropIndex("userId_1");
+      console.log("Dropped stale userId_1 index");
+    } catch (_) {}
+  })
   .catch((error) => console.log(error));
 
 app.use(cors({
@@ -66,10 +72,10 @@ app.use((req, res, next) => {
 });
 
 app.use((err, req, res, next) => {
-  res.locals.message = err.message;
-  res.locals.error = req.app.get('env') === 'development' ? err : {};
-  res.status(err.status || 500);
-  res.render('error');
+  res.status(err.status || 500).json({
+    status: false,
+    message: err.message,
+  });
 });
 
 // Start server

@@ -1,64 +1,126 @@
 const jwt = require('jsonwebtoken');
 const passwordHash = require('password-hash');
-const User = require('../../Models/User');
+const User = require('../../Models/userModel');
+
+
+
+
+
 function createToken(data) {
   return jwt.sign(data, "DonateSmile");
 }
-
-//////////////////////////////////////////
-
-
-/////////////////////////////////////////
-
 const getTokenData = async (token) => {
-    let userData = await User.findOne({ token: token }).exec();
-    return userData;
-  };
-/////////////////////////////////register function
+  let userData = await User.findOne({ token: token }).exec();
+  return userData;
+};
 const register = async (req, res) => {
-    try {
-        const { role, password , ...rest} = req.body;
-        const UserInsert=new User({
-            ...rest,
-            password: passwordHash.generate(password),
-            role,
-            token: createToken(req.body),
-            createdOn: new Date(),//mongodb will automatically create _id and createdAt fields
-        })
-        
-        await UserInsert.save();
-        return res.status(201).json({
-          status: true,
-          message: "User created successfully",
-          data: UserInsert,
-        });
-    }catch (error) {
-        console.error("Error creating user:", error);
-        return res.status(500).json({
-          status: false,
-          message: "Server error",
-          error: error.message,
-        });
+  try {
+    const { name, role, password, email, ...rest } = req.body;
+    //=========================validators=========================
+    if (!password) {
+      return res.status(400).json({
+        status: false,
+        message: "Password is required",
+      });
     }
-}
-const getProfile=async (req,res)=>{
-  try{
-      const user=await User.findById(req.user._id);
-      res.send(user);
-      
+    if (!email) {
+      return res.status(400).json({
+        status: false,
+        message: "Email is required",
+      });
+    }
+    if (!role) {
+      return res.status(400).json({
+        status: false,
+        message: "Role is required",
+      });
+    }
+    if (!name) {
+      return res.status(400).json({
+        status: false,
+        message: "Name is required",
+      });
+    }
 
-  }catch(err){
+    //=====================check existing user=====================
+    const existingUser = await User.findOne({
+      email,
+      isDeleted: false,
+    });
+
+    if (existingUser) {
+      return res.status(400).json({
+        status: false,
+        message: "User already exists",
+      });
+    }
+
+    //=====================create user=====================
+    const UserInsert = new User({
+      name,
+      ...rest,
+      email,
+      role,
+      password: passwordHash.generate(password),
+      token: createToken({
+        email,
+        role,
+      }),
+      createdOn: new Date(),
+    });
+
+    await UserInsert.save();
+
+    //=====================response=====================
+    return res.status(201).json({
+      status: true,
+      message: "User created successfully",
+      data: {
+        _id: UserInsert._id,
+        name: UserInsert.name,
+        email: UserInsert.email,
+        role: UserInsert.role,
+      },
+    });
+
+  } catch (error) {
+    console.error("Error creating user:", error);
+
+    return res.status(500).json({
+      status: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+const getProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    res.send(user);
+
+
+  } catch (err) {
     console.log(err);
-    
+
 
   }
 
 }
-/////////////////////////////////////login function
-
 const login = async (req, res) => {
   try {
     const { email, password } = req.body;
+    if (!email) {
+      return res.status(400).json({
+        status: false,
+        message: "Email is required",
+      });
+    }
+    if (!password) {
+      return res.status(400).json({
+        status: false,
+        message: "Password is required",
+      });
+    }
 
     const user = await User.findOne({ email }).select("+password").exec();
 
@@ -85,7 +147,7 @@ const login = async (req, res) => {
       { $set: { token: token } }
     );
 
-    
+
     let roleData = {};
 
     if (user.role === "student") {
@@ -138,10 +200,10 @@ const login = async (req, res) => {
 };
 
 module.exports = {
-    register,
-    getTokenData,
-    getProfile,
-    login
+  register,
+  getTokenData,
+  getProfile,
+  login
 }
 
 

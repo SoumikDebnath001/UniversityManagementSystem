@@ -3,6 +3,10 @@ const User  = require("../../Models/User");
 const Class = require("../../Models/class");
 const Room  = require("../../Models/Room");
 const RoomAllocation = require("../../Models/RoomAllocation");
+const Subject = require("../../Models/Subject");
+const passwordHash = require("password-hash");
+const jwt = require("jsonwebtoken");
+function createToken(data) { return jwt.sign(data, "DonateSmile"); }
 
 
 const toggleUserStatus = async (req, res) => {
@@ -228,6 +232,87 @@ const AllocateRoom= async (req,res)=>{
 
 
 
+const createHod = async (req, res) => {
+  try {
+    const { name, email, password, department, designation, employeeId} = req.body;
+
+    if (!name || !email|| !password) {
+      return res.status(400).json({ status: false, message: "name, email, phone and password are required" });
+    }
+
+    const existing = await User.findOne({ email });
+    if (existing) {
+      return res.status(409).json({ status: false, message: "Email already in use" });
+    }
+
+    const hodUser = new User({
+      name,
+      email,
+      password: passwordHash.generate(password),
+      role: "hod",
+      department,
+      designation,
+      employeeId,
+      createdBy: req.user._id,
+      createdByRole: "admin",
+    });
+    hodUser.token = createToken({ email, password });
+    await hodUser.save();
+
+    return res.status(201).json({
+      status: true,
+      message: "HOD created successfully",
+      data: { _id: hodUser._id, name: hodUser.name, email: hodUser.email, role: hodUser.role, department: hodUser.department },
+    });
+  } catch (err) {
+    return res.status(500).json({ status: false, error: err.message });
+  }
+};
+
+const createSubject = async (req, res) => {
+  try {
+    const { subjectName, course, department, semester } = req.body;
+
+    if (!subjectName || !course || !department || !semester) {
+      return res.status(400).json({ status: false, message: "subjectName, subjectCode, course, department and semester are required" });
+    }
+
+    const existing = await Subject.findOne({ subjectName });
+    if (existing) {
+      return res.status(409).json({ status: false, message: "Subject with this code already exists" });
+    }
+
+    const subject = await Subject.create({
+      subjectName,
+      course,
+      department,
+      semester,
+      createdBy: req.user._id,
+    });
+
+    return res.status(201).json({ status: true, message: "Subject created successfully", data: subject });
+  } catch (err) {
+    return res.status(500).json({ status: false, error: err.message });
+  }
+};
+const getAllSubjects = async (req, res) => {
+  try {
+    const filter = { isDeleted: false };
+    if (req.query.course)     filter.course     = req.query.course;
+    if (req.query.department) filter.department = req.query.department;
+    if (req.query.semester)   filter.semester   = Number(req.query.semester);
+
+    const subjects = await Subject.aggregate([
+      {
+        $match:filter
+      }
+    ]);
+    return res.json({ status: true, data: subjects });
+  } catch (err) {
+    return res.status(500).json({ status: false, error: err.message });
+  }
+};
+
 module.exports = {
   toggleUserStatus,
   appointHod,
@@ -235,5 +320,8 @@ module.exports = {
   getAllClasses,
   getAllUsers,
   createRoom,
-  AllocateRoom
+  AllocateRoom,
+  createHod,
+  createSubject,
+  getAllSubjects,
 };

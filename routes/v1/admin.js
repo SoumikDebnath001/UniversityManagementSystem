@@ -6,30 +6,29 @@
  */
 
 var express = require("express");
-var router  = express.Router();
+var router = express.Router();
 
-const adminController = require("../../controllers/RoleBasedControllers/AdminController");
-const hodController   = require("../../controllers/RoleBasedControllers/HodController");
 const { requireRole } = require("../../service/Rolemiddleware");
+const { createHod } = require("../../controllers/HodController");
 
-const ClassController = require("../../controllers/RoleBasedControllers/ClassController");
-//  User management 
-router.get("/users", requireRole("admin"), adminController.getAllUsers);
-router.patch("/toggle-user-status/:userId", requireRole("admin"), adminController.toggleUserStatus);
-router.patch("/appoint-hod/:userId", requireRole("admin"), adminController.appointHod);
+const {
+    createCourse,
+    getAllCourses,
+    getCourseById,
+    updateCourse,
+    deleteCourse,
+    addDepartment,
+    removeDepartment,
+} = require("../../controllers/courseController");
 
+router.post("/hod", requireRole("admin"), createHod);
 
-// Room management
-router.post("/create_room", requireRole("admin"), adminController.createRoom);
-router.post("/allocate_room", requireRole("admin"), adminController.AllocateRoom);
-
-router.post("/create_class",ClassController.createCourse);
-router.post("/appoint_monitor",ClassController.ClassMonitor);
-router.get("/monitors",ClassController.getAllMonitors);
-// Class management 
-// router.post("/create-class", requireRole("admin"), adminController.createClass);
-// router.get("/classes", requireRole("admin"), adminController.getAllClasses);
-// router.patch("/appoint-monitor", requireRole("hod"), hodController.appointClassMonitor);
-// router.get("/class/:classId/students", requireRole("hod", "admin"), hodController.getClassStudents);
+router.post("/courses", requireRole("admin"), createCourse);
+router.get("/courses", requireRole("admin"), getAllCourses);
+router.get("/courses/:id", requireRole("admin"), getCourseById);
+router.put("/courses/:id", requireRole("admin"), updateCourse);
+router.delete("/courses/:id", requireRole("admin"), deleteCourse);
+router.post("/courses/:id/departments", requireRole("admin"), addDepartment);
+router.delete("/courses/:id/departments/:deptId", requireRole("admin"), removeDepartment);
 
 module.exports = router;

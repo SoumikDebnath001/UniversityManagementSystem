@@ -1,6 +1,8 @@
 
-const User = require("../../Models/User");
+const User        = require("../../Models/User");
 const RoomAllocation = require("../../Models/RoomAllocation");
+const Subject     = require("../../Models/Subject");
+const Timetable   = require("../../Models/Timetable");
 
 const updateStudentProfile = async (req, res) => {
   try {
@@ -137,6 +139,85 @@ const getDetails=async(req,res)=>{
 }
 
 
+///////////////////////////////////////tasks
 
+const getMySubjects = async (req, res) => {
+  try {
+    const student = await User.findById(req.user._id);
 
-module.exports = { updateStudentProfile, getMyRoom, getMyRoomAggregation };
+    if (!student.course || !student.department || !student.semester) {
+      return res.status(400).json({ status: false, message: "Your profile is missing course, department or semester. Please update your profile first." });
+    }
+
+    const subjects = await Subject.find({
+      course:     student.course,
+      department: student.department,
+      semester:   student.semester,
+      isDeleted:  false,
+    }).sort({ subjectName: 1 });
+
+    return res.json({ status: true, semester: student.semester, total: subjects.length, data: subjects });
+  } catch (err) {
+    return res.status(500).json({ status: false, error: err.message });
+  }
+};
+
+const getMyTimetableDaily = async (req, res) => {
+  try {
+    const { day } = req.body;
+    if (!day) {
+      return res.status(400).json({ status: false, message: "day query param is required (e.g. ?day=Monday)" });
+    }
+
+    const student = await User.findById(req.user._id);
+    if (!student.course || !student.department || !student.semester) {
+      return res.status(400).json({ status: false, message: "Your profile is missing course, department or semester." });
+    }
+
+    const timetable = await Timetable.findOne({
+      course:     student.course,
+      department: student.department,
+      semester:   student.semester,
+      day,
+      isActive:   true,
+    }).populate("slots.subjectId", "subjectName subjectCode credits");
+
+    if (!timetable) {
+      return res.status(404).json({ status: false, message: `No timetable found for ${day}` });
+    }
+
+    return res.json({ status: true, day: timetable.day, data: timetable.slots });
+  } catch (err) {
+    return res.status(500).json({ status: false, error: err.message });
+  }
+};
+
+const getMyTimetableWeekly = async (req, res) => {
+  try {
+    const student = await User.findById(req.user._id);
+    if (!student.course || !student.department || !student.semester) {
+      return res.status(400).json({ status: false, message: "Your profile is missing course, department or semester." });
+    }
+
+    const DAYS_ORDER = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
+    const timetables = await Timetable.find({
+      course:     student.course,
+      department: student.department,
+      semester:   student.semester,
+      isActive:   true,
+    }).populate("slots.subjectId", "subjectName subjectCode credits");
+
+    const weekly = {};
+    timetables.forEach((t) => { weekly[t.day] = t.slots; });
+
+    const ordered = {};
+    DAYS_ORDER.forEach((d) => { if (weekly[d]) ordered[d] = weekly[d]; });
+
+    return res.json({ status: true, course: student.course, department: student.department, semester: student.semester, data: ordered });
+  } catch (err) {
+    return res.status(500).json({ status: false, error: err.message });
+  }
+};
+
+module.exports = { updateStudentProfile, getMyRoom, getMyRoomAggregation, getMySubjects, getMyTimetableDaily, getMyTimetableWeekly };

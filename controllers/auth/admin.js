@@ -1,38 +1,37 @@
-const Admin =require('../../Models/admin');
+const Admin = require('../../Models/adminModel');
 const jwt = require('jsonwebtoken');
 const passwordHash = require('password-hash');
 function createToken(data) {
   return jwt.sign(data, "DonateSmile");
 }
-
 const getTokenData = async (token) => {
-    let adminData = await Admin.findOne({ token: token }).exec();
-    return adminData;
-  };
+  let adminData = await Admin.findOne({ token: token }).exec();
+  return adminData;
+};
 const register = async (req, res) => {
-    try {
-        const { name, email, password } = req.body;
-        const AdminInsert=new Admin({
-            name,
-            email,
-            password: passwordHash.generate(password),
-            token: createToken(req.body),
-            createdOn: new Date(),//mongodb will automatically create _id and createdAt fields
-        })
-        await AdminInsert.save();
-        return res.status(201).json({
-          status: true,
-          message: "Admin created successfully",
-          data: AdminInsert,
-        });
-    }catch (error) {
-        console.error("Error creating admin:", error);
-        return res.status(500).json({
-          status: false,
-          message: "Server error",
-          error: error.message,
-        });
-    }
+  try {
+    const { name, email, password } = req.body;
+    const AdminInsert = new Admin({
+      name,
+      email,
+      password: passwordHash.generate(password),
+      token: createToken(req.body),
+      createdOn: new Date(),//mongodb will automatically create _id and createdAt fields
+    })
+    await AdminInsert.save();
+    return res.status(201).json({
+      status: true,
+      message: "Admin created successfully",
+      data: AdminInsert,
+    });
+  } catch (error) {
+    console.error("Error creating admin:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
 }
 const login = async (req, res) => {
   try {
@@ -56,7 +55,7 @@ const login = async (req, res) => {
       });
     }
 
-   
+
     const token = createToken(req.body);
     await Admin.updateOne(
       { _id: admin._id },
@@ -80,9 +79,9 @@ const login = async (req, res) => {
   }
 };
 module.exports = {
-    register,
-    login,
-    getTokenData
+  register,
+  login,
+  getTokenData
 }
 
 

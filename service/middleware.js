@@ -15,6 +15,12 @@ const parmisoen = [
     {
         url: "/admin/register",
     },
+    {
+        url: "/hod/login",
+    },
+    {
+        url: "/hod/register",
+    }
 
 ]
 
@@ -33,6 +39,9 @@ user.middleware = async (req, res, next) => {
             // console.log('userType', userType, req.headers); 
             if (userType == "Admin") {
                 userData = await AdminController.getTokenData(authorization);
+             }
+            if (userType == "Hod") {
+                userData = await UserController.getTokenData(authorization);
              }
             else if(userType == "User") {
                 userData = await UserController.getTokenData(authorization);
